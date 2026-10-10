@@ -1,0 +1,13 @@
+services:
+  atomic-clock:
+    image: ghcr.io/alumos/atomic-clock-lab:latest
+    ports:
+      - "18083:80"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

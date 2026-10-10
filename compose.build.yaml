@@ -1,0 +1,14 @@
+services:
+  atomic-clock:
+    image: atomic-clock-lab:local
+    build: .
+    ports:
+      - "18083:80"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

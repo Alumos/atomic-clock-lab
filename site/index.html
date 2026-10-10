@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef4f8"><title>任务二：原子钟揭秘</title>
+  <link rel="icon" href="assets/satellite.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css">
+  <script defer src="model.js"></script><script defer src="scene.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<main class="app">
+  <header class="masthead">
+    <a class="brand" href="./"><span class="brand-star" aria-hidden="true">✦</span><span><h1>任务二：原子钟揭秘</h1><small>差一点时间，位置会差多远？</small></span></a>
+    <div class="header-actions"><button id="help-button">原理说明</button><button id="motion-button" aria-pressed="true">动画开</button><button id="sound-button" aria-pressed="true">音效开</button><button id="fullscreen-button">全屏</button></div>
+  </header>
+  <section class="cause-chain" aria-label="时间误差影响定位的过程">
+    <div class="metric"><span class="step">01</span><div><p id="time-label">1 号卫星时间偏差</p><strong><span id="time-value">100</span><small id="time-unit">纳秒</small></strong><span class="metric-note" id="time-detail">0.000000100 秒</span></div><span class="chain-arrow" aria-hidden="true">→</span></div>
+    <div class="metric metric-range"><span class="step">02</span><div><p id="range-label">这颗卫星的测距误差</p><strong><span id="range-value">29.98</span><small> 米</small></strong><span class="metric-note" id="range-detail">钟差 × 光速</span></div><span class="chain-arrow" aria-hidden="true">→</span></div>
+    <div class="metric metric-position"><span class="step">03</span><div><p>四星解算后的定位偏差</p><strong><span id="position-value">16.02</span><small> 米</small></strong><span class="metric-note" id="position-detail">本例卫星分布下的模拟结果</span></div></div>
+  </section>
+  <div class="workspace">
+    <section class="map-panel" aria-labelledby="map-title">
+      <div class="panel-heading"><h2 id="map-title"><span class="status-dot"></span>人没有动，导航点却偏了</h2><span class="tag">校园定位 · 教学模拟</span></div>
+      <div class="map-wrap"><canvas id="map" width="1000" height="580" aria-label="校园地图：绿色是真实位置，橙色是导航估计位置。调节卫星钟差观察变化。"></canvas></div>
+      <div class="map-caption"><div class="legend"><span><i class="actual-dot"></i>真实位置</span><span><i class="estimate-dot"></i>导航估计位置</span><span class="grid-caption">每格 50 米</span></div><button id="zoom-button" aria-pressed="false">放大看微小偏差</button></div>
+      <div class="observation" id="observation" role="status" aria-live="polite"><span class="observation-icon" aria-hidden="true">↗</span><div><strong id="observation-title">时间偏了，导航位置也偏了</strong><p id="observation-text">调大钟差，观察橙色导航点。</p></div></div>
+    </section>
+    <aside class="control-panel" aria-labelledby="control-title">
+      <div class="control-heading"><h2 id="control-title">选择一种钟差，动手比较</h2></div>
+      <div class="modes" role="group" aria-label="卫星钟差实验模式"><button data-mode="single" aria-pressed="true" class="active">单星偏差</button><button data-mode="mixed" aria-pressed="false">四星不同偏差</button></div>
+      <p id="mode-note" class="mode-note">只改变 1 号卫星，其他三颗保持同步。</p>
+      <div class="satellites" role="group" aria-label="选择要调整的卫星">
+        <button data-satellite="0" aria-pressed="true"><span>1 号卫星</span><strong id="sat-value-0">快 100 ns</strong></button>
+        <button data-satellite="1" aria-pressed="false"><span>2 号卫星</span><strong id="sat-value-1">同步</strong></button>
+        <button data-satellite="2" aria-pressed="false"><span>3 号卫星</span><strong id="sat-value-2">同步</strong></button>
+        <button data-satellite="3" aria-pressed="false"><span>4 号卫星</span><strong id="sat-value-3">同步</strong></button>
+      </div>
+      <div class="clock-control">
+        <label class="slider-label" for="clock-slider"><span id="slider-target">1 号卫星钟差</span><strong><span id="slider-value">100</span><small> ns</small></strong></label>
+        <input id="clock-slider" type="range" min="0" max="1000000000" step="1" value="100" aria-describedby="unit-note">
+        <div class="slider-ticks"><span>0 · 同步</span><span id="unit-note">光速让微小时间差变成长距离</span><span>1 秒</span></div>
+      </div>
+      <div class="presets" role="group" aria-label="快速选择时间偏差"><button data-ns="1" aria-pressed="false">十亿分之一秒<small>1 ns</small></button><button data-ns="10" aria-pressed="false">亿分之一秒<small>10 ns</small></button><button data-ns="1000" aria-pressed="false">百万分之一秒<small>1 μs</small></button><button data-ns="1000000" aria-pressed="false">千分之一秒<small>1 ms</small></button><button data-ns="100000000" aria-pressed="false">十分之一秒<small>0.1 s</small></button><button data-ns="1000000000" aria-pressed="false">差一整秒<small>1 s</small></button></div>
+      <div class="direction" role="group" aria-label="钟差方向"><span id="clock-status">比参考时间快 100 纳秒</span><button data-direction="ahead" class="active" aria-pressed="true">走快了</button><button data-direction="behind" aria-pressed="false">走慢了</button></div>
+      <div class="experiment-actions"><button class="primary-button" id="calibrate-button">↺ 校准全部原子钟</button><button class="demo-button" id="demo-button" aria-pressed="false">▶ 混乱演示：偏差扩大 → 校准</button></div>
+      <div class="takeaway" id="experiment-tip">跨度从十亿分之一秒一直到整整 1 秒，感受定位如何失控。</div>
+    </aside>
+  </div>
+  <footer><span>光在 1 纳秒里走约 30 厘米 · 测距误差 ≠ 定位偏差</span><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">苏ICP备2021038338号-1</a></footer>
+</main>
+<div class="modal-backdrop" id="help-modal" hidden>
+  <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" tabindex="-1">
+    <header><h2 id="help-title">原子钟怎样影响定位？</h2><button id="close-help">关闭说明 ×</button></header>
+    <div class="help-content">
+      <article><h3>① 时间算错，距离就算错</h3><p>信号以光速传播。1 纳秒对应约 30 厘米的测距误差，1 微秒约 300 米，1 毫秒约 300 千米，1 秒则是约 30 万千米。原子钟的稳定计时直接决定卫星测距能否可信。</p></article>
+      <article><h3>② 两种模式，感受定位混乱</h3><p><b>单星偏差：</b>只让一颗卫星的时间失准，导航点会被拉向错误方向。</p><p><b>四星不同偏差：</b>四颗分别走快或走慢，距离互相矛盾，定位点可能跳动、偏移，误差也可能部分抵消。</p></article>
+      <article><h3>③ 先预测，再操作</h3><p>从十亿分之一秒一路调到一整秒，测距误差会扩大多少倍？</p><button id="answer-button" aria-expanded="false" aria-controls="answer">查看解释 ＋</button><p id="answer" hidden>从 1 纳秒到 1 秒是 10 亿倍。光速不变，时间差扩大多少倍，单颗卫星的测距误差就扩大多少倍；四星不同偏差下，最终定位还取决于误差组合。</p></article>
+      <article><h3>教学模型与科学说明</h3><p>每颗发射钟差可调 0–1 秒。走快使该卫星伪距偏短，走慢使其偏长。地图会把超出校园范围的估计位置压缩到视野边缘，并用震动与警报强调“已经失控”；它是教学夸张效果，不是实际北斗精度评估。</p><p>大钟差下的定位偏差是局部线性模型的外推，不能当作真实定位结果；真实接收机可能无法定位。模型使用固定四颗卫星方向的局部二维线性最小二乘解算；真实三维定位还包含高度、大气、轨道、多路径和系统校正。“校准”只清除本实验设定的钟差。</p><p>真空光速：299792458 米/秒。<a href="https://www.beidou.gov.cn/xt/xtjs/" target="_blank" rel="noopener noreferrer">北斗卫星导航系统介绍</a></p></article>
+    </div>
+  </section>
+</div>
+</body>
+</html>

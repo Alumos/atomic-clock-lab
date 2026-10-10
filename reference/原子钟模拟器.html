@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原子钟探秘 · 时间误差 → 定位误差</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:"Microsoft YaHei","PingFang SC",sans-serif; }
+  html, body { height:100%; overflow:hidden; }
+  body {
+    background:linear-gradient(150deg,#e9f3ff,#f6fbff 45%,#fff7ec);
+    color:#2b3a55; padding:10px 12px; display:flex; justify-content:center;
+  }
+  .app { width:100%; max-width:1420px; height:100%; display:flex; flex-direction:column; gap:9px; }
+
+  /* ===== 顶部标题 ===== */
+  header { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; padding:0 4px; }
+  header h1 { font-size:clamp(18px,2.3vh,26px); color:#1d4e89; letter-spacing:1px; white-space:nowrap; }
+  header .sub { font-size:clamp(12px,1.5vh,15px); color:#66799a; }
+
+  /* ===== 课本阅读卡 ===== */
+  .facts { display:flex; gap:9px; flex-wrap:wrap; }
+  .facts span { flex:1 1 380px; background:#fff; border-radius:11px; padding:5px 12px;
+    font-size:clamp(10.5px,1.35vh,13.5px); line-height:1.5; border:1px solid #e3edf8;
+    box-shadow:0 3px 10px rgba(30,80,150,.06); }
+  .facts .f1 { border-left:4px solid #2f80ed; }
+  .facts .f2 { border-left:4px solid #d64541; }
+  .facts b { color:#1d4e89; }
+  .facts .f2 b { color:#c0392b; }
+
+  /* ===== 主体：左侧控制台 + 右侧演示 ===== */
+  .main { flex:1; display:flex; gap:10px; min-height:0; }
+
+  .panel {
+    flex:0 0 322px; background:#fff; border-radius:16px; border:1px solid #e3edf8;
+    box-shadow:0 6px 22px rgba(30,80,150,.09); padding:14px 16px;
+    display:flex; flex-direction:column; gap:10px; min-height:0; overflow:hidden;
+  }
+
+  .metric { border-radius:13px; padding:10px 14px; color:#fff; }
+  .m-time { background:linear-gradient(135deg,#2f80ed,#56ccf2); }
+  .m-dist { background:linear-gradient(135deg,#e67e22,#f5b041); box-shadow:0 5px 16px rgba(230,126,34,.32); }
+  .metric .lbl { font-size:clamp(11px,1.4vh,13px); opacity:.92; }
+  .metric .val { font-size:clamp(20px,3.2vh,32px); font-weight:bold; line-height:1.3; letter-spacing:.5px; }
+  .metric .sub { font-size:clamp(11px,1.35vh,13px); opacity:.9; }
+  .m-mag { background:#f1f6ff; color:#2b5ea7; border:1px dashed #bcd7f5; border-radius:11px;
+           padding:6px 12px; text-align:center; line-height:1.55; }
+  .m-mag #calcLine { font-size:clamp(11.5px,1.45vh,14.5px); }
+  .m-mag #calcLine b { color:#e67e22; font-size:1.12em; }
+  .m-mag .mag-sub { font-size:clamp(10px,1.25vh,12.5px); color:#7a8db0; margin-top:1px; }
+  .m-mag .mag-sub b { color:#8e44ad; }
+
+  .presets { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .preset {
+    border:1.5px solid #bcd7f5; background:#f5f9ff; color:#2b5ea7; border-radius:10px;
+    padding:5px 4px; cursor:pointer; transition:.18s; line-height:1.3; font-size:clamp(10.5px,1.3vh,12.5px);
+  }
+  .preset small { font-size:.85em; opacity:.72; }
+  .preset:hover { transform:translateY(-1px); box-shadow:0 3px 9px rgba(47,128,237,.18); }
+  .preset.active { background:#2f80ed; border-color:#2f80ed; color:#fff; box-shadow:0 3px 12px rgba(47,128,237,.38); }
+
+  .slider-wrap { margin-top:auto; }
+  input[type=range] { width:100%; accent-color:#2f80ed; height:24px; cursor:pointer; }
+  .slider-labels { display:flex; justify-content:space-between; font-size:clamp(10px,1.25vh,12px); color:#8296b3; }
+
+  .verdict { border-radius:11px; padding:7px 12px; font-size:clamp(11.5px,1.4vh,13.5px); line-height:1.5; text-align:center; }
+  .v-good { background:#eafaf1; color:#1e8449; border:1px solid #a9dfbf; }
+  .v-mid  { background:#fff6e6; color:#9a6200; border:1px solid #f0c987; }
+  .v-bad  { background:#fdecea; color:#a13327; border:1px solid #f5b7b1; font-weight:bold; }
+
+  /* ===== 城市视角大屏 ===== */
+  .stage {
+    flex:1; position:relative; border-radius:18px; overflow:hidden; min-width:0;
+    background:linear-gradient(#cfe6ff 0%,#e8f4ff 55%,#f6fbff 100%);
+    border:1px solid #d8e7f8; box-shadow:0 8px 26px rgba(30,80,150,.12);
+  }
+  .sun { position:absolute; right:5%; top:6%; font-size:clamp(20px,3vh,32px); filter:drop-shadow(0 0 12px #ffd76e); }
+  .ground { position:absolute; left:0; right:0; bottom:0; height:17%;
+            background:linear-gradient(#a7dc8a,#7cbf5e); border-top:3px solid #8ecb6e; }
+  .bld { position:absolute; bottom:17%; background:linear-gradient(#c6d4e6,#a8bacd); border-radius:5px 5px 0 0; }
+  .bld::after { content:""; position:absolute; inset:16% 14% auto 14%; height:58%;
+                background:repeating-linear-gradient(90deg,#eaf3ff 0 6px,transparent 6px 13px); opacity:.85; border-radius:2px; }
+  .sat { position:absolute; left:50%; top:3%; transform:translateX(-50%); font-size:clamp(22px,3.4vh,38px);
+         animation:float 3.2s ease-in-out infinite; filter:drop-shadow(0 3px 6px rgba(0,0,0,.12)); }
+  @keyframes float { 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(-7px);} }
+  .beam { position:absolute; left:50%; top:12%; width:3px; height:36%; transform-origin:top center;
+          background:linear-gradient(#2f80ed00,#2f80edcc); animation:sway 2.6s ease-in-out infinite; }
+  @keyframes sway { 0%,100%{transform:rotate(-13deg);} 50%{transform:rotate(13deg);} }
+
+  .ring { position:absolute; left:var(--cx); top:var(--cy); transform:translate(-50%,-50%);
+          border-radius:50%; border:2px dashed #9fc3ef99; pointer-events:none; }
+  .ring.landmark { border-style:dotted; border-color:#7ea9dd77; }
+  .ring .rl { position:absolute; left:50%; top:-9px; transform:translate(-50%,-50%); white-space:nowrap;
+              font-size:clamp(9.5px,1.25vh,12.5px); color:#4a6d99; background:#ffffffd9; padding:1px 6px; border-radius:8px; }
+  .ring.main { border-style:solid; border-width:3px; transition:width .35s ease,height .35s ease,border-color .35s ease; }
+
+  .you { position:absolute; left:var(--cx); top:var(--cy); transform:translate(-50%,-50%); z-index:4;
+         font-size:clamp(20px,3.2vh,34px); filter:drop-shadow(0 2px 4px rgba(0,0,0,.18)); }
+  .you::after { content:"你在这里"; position:absolute; left:50%; top:100%; transform:translateX(-50%);
+                white-space:nowrap; font-size:clamp(9px,1.2vh,11.5px); color:#2b7a3c; font-weight:bold; }
+  .pin { position:absolute; left:var(--cx); top:var(--cy); z-index:5; transform:translate(-50%,-50%);
+         transition:transform .45s cubic-bezier(.34,1.3,.64,1); }
+  .pin .dot { font-size:clamp(20px,3.2vh,34px); display:block; filter:drop-shadow(0 2px 5px rgba(0,0,0,.2)); }
+  .pin .tagbox { position:absolute; left:105%; top:-6px; white-space:nowrap; font-size:clamp(10px,1.35vh,14px);
+                 font-weight:bold; color:#fff; background:#e67e22; padding:2px 9px; border-radius:9px;
+                 box-shadow:0 3px 8px rgba(0,0,0,.18); }
+  .trail { position:absolute; left:var(--cx); top:var(--cy); z-index:3; height:3px; transform-origin:0 50%;
+           background:repeating-linear-gradient(90deg,#e67e2288 0 8px,transparent 8px 15px);
+           transition:width .4s ease, transform .4s ease; }
+  .stage-hint { position:absolute; left:12px; bottom:calc(17% + 8px); font-size:clamp(10px,1.3vh,13px);
+                color:#2b4a6f; background:#ffffffd9; padding:3px 10px; border-radius:9px; }
+
+  /* ===== 音效开关 ===== */
+  .sound-chip { position:absolute; left:12px; top:10px; z-index:6; display:flex; align-items:center; gap:8px;
+    background:#ffffffdd; border:1px solid #cfe0f5; border-radius:11px; padding:4px 9px 4px 6px;
+    box-shadow:0 3px 10px rgba(30,80,150,.12); }
+  .sound-chip button { border:none; background:#2f80ed; color:#fff; border-radius:8px; padding:4px 10px;
+    cursor:pointer; font-size:clamp(10px,1.3vh,12.5px); font-weight:bold; transition:.18s; white-space:nowrap; }
+  .sound-chip button:hover { filter:brightness(1.08); }
+  .sound-chip button.on { background:#e74c3c; box-shadow:0 0 0 3px #e74c3c33; }
+  .vol-wrap { width:clamp(54px,7vw,90px); height:9px; background:#e6eef9; border-radius:99px; overflow:hidden;
+              border:1px solid #d6e4f5; }
+  .vol-wrap i { display:block; height:100%; width:0%; background:#27ae60; border-radius:99px;
+                transition:width .25s ease, background .25s ease; }
+  .sound-chip .tip { font-size:clamp(9px,1.15vh,11.5px); color:#7186a4; white-space:nowrap; }
+
+  .shake { animation:shake .2s infinite; }
+  @keyframes shake { 0%{transform:translate(0,0)} 25%{transform:translate(-2px,1px)} 50%{transform:translate(2px,-1px)} 75%{transform:translate(-1px,-2px)} 100%{transform:translate(1px,2px)} }
+  .zoom-tip { position:absolute; right:12px; bottom:calc(17% + 8px); font-size:clamp(10px,1.3vh,13px);
+              color:#8a5a00; background:#fff8ef; padding:3px 10px; border-radius:9px; border:1px solid #f0d4a8; }
+  .scale-note { position:absolute; right:12px; bottom:calc(17% + 38px); font-size:clamp(9.5px,1.2vh,12px);
+                color:#7a8699; background:#ffffffcc; padding:2px 9px; border-radius:8px; }
+
+  /* ===== 底部太空刻度 ===== */
+  .track { flex:0 0 auto; height:clamp(58px,9.5vh,84px); background:linear-gradient(#0c1f3d,#1d4172);
+           border-radius:14px; position:relative; overflow:hidden; border:1px solid #16325c; }
+  .track .path { position:absolute; left:9%; right:9%; top:60%; border-top:2px dotted #ffffff55; }
+  .track .pl { position:absolute; bottom:8px; }
+  .earth { left:5%; font-size:clamp(20px,3.2vh,32px); }
+  .moon  { right:4%; font-size:clamp(16px,2.5vh,24px); }
+  .rk { position:absolute; bottom:14px; font-size:clamp(14px,2.2vh,22px); transition:left .45s ease; transform:translateX(-50%); }
+  .tk-lbl { position:absolute; bottom:1px; transform:translateX(-50%); color:#cfe3ff; font-size:clamp(9px,1.2vh,11.5px); white-space:nowrap; opacity:.9; }
+  .tk-title { position:absolute; left:12px; top:5px; color:#9fc3ef; font-size:clamp(10px,1.25vh,12.5px); }
+  .tk-note { position:absolute; right:12px; top:4px; max-width:60%; text-align:right;
+             color:#ffd76e; font-size:clamp(9.5px,1.2vh,12px); line-height:1.45; }
+
+  @media (max-height:720px){
+    .panel { padding:10px 12px; gap:7px; }
+    .metric { padding:8px 12px; }
+    .preset { padding:3px 4px; }
+    .m-mag { padding:5px 10px; }
+  }
+  @media (max-width:900px){
+    .main { flex-direction:column; }
+    .panel { flex:0 0 auto; }
+    .stage { min-height:200px; }
+    .scale-note { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>🛰️ 原子钟 · 导航卫星的“心脏”</h1>
+    <span class="sub">北斗探秘模拟器：拖动滑块调节时间误差，看定位点“跑偏”多远（定位误差 = 时间误差 × 光速）</span>
+  </header>
+
+  <div class="facts">
+    <span class="f1">📖 课本阅读：原子钟提供<b>时间基准</b>，其准确度和稳定度直接影响导航卫星的<b>定位、测速和授时</b>精度</span>
+    <span class="f2">🇨🇳 我国科研人员自主攻关，北斗导航系统上的原子钟精度已达<b>每 300 万年才出现 1 秒误差</b>，关键核心技术自主可控</span>
+  </div>
+
+  <div class="main">
+    <!-- 左侧控制台 -->
+    <div class="panel">
+      <div class="metric m-time">
+        <div class="lbl">⏱ 原子钟的时间误差</div>
+        <div class="val" id="tErr">1 纳秒</div>
+        <div class="sub" id="tErrSub">＝ 十亿分之一秒</div>
+      </div>
+
+      <div class="metric m-dist">
+        <div class="lbl">📍 造成的定位误差（跑偏多远）</div>
+        <div class="val" id="pErr">0.30 米</div>
+        <div class="sub" id="pErrSub">几乎感觉不到，导航很准</div>
+      </div>
+
+      <div class="m-mag">
+        <div id="calcLine">1 纳秒 × 光速 30 万公里/秒 ≈ <b>0.3 米</b></div>
+        <div class="mag-sub">误差被放大约 <b>3 亿倍</b>——时间差一点，距离差老远</div>
+      </div>
+
+      <div class="presets" id="presets">
+        <button class="preset" data-exp="-9">十亿分之一秒<small><br>跑偏 0.3 米</small></button>
+        <button class="preset" data-exp="-8">亿分之一秒<small><br>跑偏 3 米</small></button>
+        <button class="preset" data-exp="-6">百万分之一秒<small><br>跑偏 300 米</small></button>
+        <button class="preset" data-exp="-3">千分之一秒<small><br>跑偏 300 公里</small></button>
+        <button class="preset" data-exp="-1">十分之一秒<small><br>跑偏 3 万公里</small></button>
+        <button class="preset" data-exp="0">差一整秒<small><br>跑偏 30 万公里 · 到月球</small></button>
+      </div>
+
+      <div class="slider-wrap">
+        <input type="range" id="slider" min="-10" max="0" step="0.02" value="-9">
+        <div class="slider-labels"><span>← 更精准</span><span>更不准 →</span></div>
+      </div>
+
+      <div class="verdict v-good" id="verdict">✅ 时间足够精准，定位稳稳的！</div>
+    </div>
+
+    <!-- 城市视角 -->
+    <div class="stage" id="stage">
+      <div class="sound-chip">
+        <button id="soundBtn">🔇 音效已关</button>
+        <span class="vol-wrap"><i id="volBar"></i></span>
+        <span class="tip" id="soundTip">点一下开启提示音</span>
+      </div>
+      <div class="sun">☀️</div>
+      <div class="sat">🛰️</div>
+      <div class="beam"></div>
+      <div class="ground"></div>
+      <div class="bld" style="left:6%;width:5%;height:20%"></div>
+      <div class="bld" style="left:13%;width:3.6%;height:14%"></div>
+      <div class="bld" style="left:18.5%;width:4.4%;height:26%"></div>
+      <div class="bld" style="right:6%;width:5.2%;height:28%"></div>
+      <div class="bld" style="right:13.5%;width:3.8%;height:17%"></div>
+      <div class="bld" style="right:19%;width:4.6%;height:23%"></div>
+
+      <div id="rings"></div>
+      <div class="trail" id="trail"></div>
+      <div class="you">🙋</div>
+      <div class="pin" id="pin"><span class="dot">📍</span><span class="tagbox" id="pinTag">0.3 米</span></div>
+
+      <div class="stage-hint">🙋 真实位置　📍 导航算出的位置　○ 误差圈越大＝跑偏越远</div>
+      <div class="zoom-tip" id="zoomTip">当前误差圈：约 0.3 米</div>
+      <div class="scale-note">※ 圈的大小按“每格差 10 倍”的刻度画，方便同时看米和万公里</div>
+    </div>
+  </div>
+
+  <!-- 底部太空刻度 -->
+  <div class="track">
+    <div class="tk-title">🌏 换个视角：这点误差在地球—月球之间有多远？（对数刻度）</div>
+    <div class="tk-note">📌 精确算一算：千分之一秒 × 30万公里/秒 = <b>300 公里</b>；书上“跑出地球到月球”的 30 万公里，要时间差整整 <b>1 秒</b>——而北斗的原子钟 300 万年才差这 1 秒！</div>
+    <div class="path"></div>
+    <div class="pl earth">🌏</div>
+    <div class="pl moon">🌕</div>
+    <div class="rk" id="rocket">🚀</div>
+    <div class="tk-lbl" style="left:9%">1 米</div>
+    <div class="tk-lbl" style="left:27%">1 公里</div>
+    <div class="tk-lbl" style="left:50%">1000 公里</div>
+    <div class="tk-lbl" style="left:72%">10 万公里</div>
+    <div class="tk-lbl" style="left:92%">月球 38 万公里</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const C = 299792458;                                          // 光速 m/s
+  const LOG_MIN = Math.log10(0.03), LOG_MAX = Math.log10(3e8);   // 0.03 米 → 3 亿米
+  const RINGS = [
+    { m: 1,      t: '1 米 · 一张课桌宽' },
+    { m: 100,    t: '100 米 · 一个操场' },
+    { m: 1e4,    t: '10 公里 · 一座城' },
+    { m: 1e6,    t: '1000 公里 · 跨一个省' },
+    { m: 3.84e8, t: '38 万公里 · 到月球' }
+  ];
+
+  const stage   = document.getElementById('stage');
+  const ringsBox= document.getElementById('rings');
+  const pin     = document.getElementById('pin'), pinTag = document.getElementById('pinTag');
+  const trail   = document.getElementById('trail');
+  const slider  = document.getElementById('slider');
+  const tErr    = document.getElementById('tErr'), tErrSub = document.getElementById('tErrSub');
+  const pErr    = document.getElementById('pErr'), pErrSub = document.getElementById('pErrSub');
+  const verdict = document.getElementById('verdict'), zoomTip = document.getElementById('zoomTip');
+  const calcLine = document.getElementById('calcLine');
+  const rocket  = document.getElementById('rocket'), presets = document.querySelectorAll('.preset');
+  const soundBtn = document.getElementById('soundBtn'), volBar = document.getElementById('volBar'),
+        soundTip = document.getElementById('soundTip');
+
+  let cx = 0, cy = 0, rMax = 100, wob = 0, curErr = 0, curLevel = 0;
+  let curVerdict = 'v-good', seenVerdict = 'v-good';
+  const ANGLE = -42;
+
+  function layout(){
+    const W = stage.clientWidth, H = stage.clientHeight;
+    cx = W * 0.5;  cy = H * 0.55;
+    rMax = Math.min(W * 0.42, H * 0.46);
+    stage.style.setProperty('--cx', cx + 'px');
+    stage.style.setProperty('--cy', cy + 'px');
+    buildRings();
+    render();
+  }
+
+  function rOf(m){                     // 误差(米) → 半径(像素)，对数映射
+    const t = (Math.log10(Math.max(m, 0.01)) - LOG_MIN) / (LOG_MAX - LOG_MIN);
+    return 14 + Math.min(Math.max(t, 0), 1) * (rMax - 14);
+  }
+
+  function buildRings(){
+    ringsBox.innerHTML = '';
+    RINGS.forEach(l => {
+      const r = rOf(l.m);
+      if (r > rMax - 4 || r < 15) return;
+      const d = document.createElement('div');
+      d.className = 'ring landmark';
+      d.style.width = d.style.height = (r * 2) + 'px';
+      d.innerHTML = '<span class="rl">' + l.t + '</span>';
+      ringsBox.appendChild(d);
+    });
+    const main = document.createElement('div');
+    main.className = 'ring main'; main.id = 'mainRing';
+    ringsBox.appendChild(main);
+  }
+
+  const NAMES = { '-9':'十亿分之一秒','-8':'亿分之一秒','-7':'千万分之一秒','-6':'百万分之一秒',
+                  '-5':'十万分之一秒','-4':'万分之一秒','-3':'千分之一秒','-2':'百分之一秒',
+                  '-1':'十分之一秒','0':'整整 1 秒' };
+
+  function fmtTimeVal(t){
+    if (t >= 0.5)  return t.toFixed(1) + ' 秒';
+    if (t >= 1e-3) return (t*1e3).toFixed(t*1e3 >= 10 ? 0 : 1) + ' 毫秒';
+    if (t >= 1e-6) return (t*1e6).toFixed(t*1e6 >= 10 ? 0 : 1) + ' 微秒';
+    if (t >= 1e-9) return (t*1e9).toFixed(t*1e9 >= 10 ? 0 : 1) + ' 纳秒';
+    return (t*1e12).toFixed(1) + ' 皮秒';
+  }
+  function fmtName(t){
+    const e = Math.round(Math.log10(t));
+    return '＝ ' + (NAMES[e] || ('10^' + e + ' 秒'));
+  }
+  function fmtDist(m){
+    if (m < 1)     return m.toFixed(2) + ' 米';
+    if (m < 1000)  return (m >= 10 ? Math.round(m) : m.toFixed(1)) + ' 米';
+    const km = m / 1000;
+    if (km < 1e4)  return (km >= 100 ? Math.round(km) : km.toFixed(1)) + ' 公里';
+    if (km < 1e8)  return Math.round(km).toLocaleString() + ' 公里';
+    return (km / 1e4).toFixed(1) + ' 万公里';
+  }
+  function verdictOf(m){
+    if (m < 1)     return ['v-good','✅ 跑偏不到 1 米，导航准得能看清你在哪扇门口！'];
+    if (m < 30)    return ['v-good','✅ 只差几米到几十米，导航基本不会带错路。'];
+    if (m < 1000)  return ['v-mid','⚠️ 已经差出几百米到几公里，可能把你带到隔壁小区或另一个路口。'];
+    if (m < 1e5)   return ['v-bad','😱 跑偏上百公里，导航直接把你带到别的城市了！'];
+    if (m < 3.5e5) return ['v-bad','😱 差近 30 万公里——快“跑出”地球、飞到月球了！'];
+    return ['v-bad','😱 超过 38 万公里，已经冲过月球轨道，彻底“失联”！'];
+  }
+
+  function render(){
+    const t = Math.pow(10, parseFloat(slider.value));
+    const err = t * C;
+
+    tErr.textContent = fmtTimeVal(t);
+    tErrSub.textContent = fmtName(t);
+    pErr.textContent = fmtDist(err);
+    calcLine.innerHTML = fmtTimeVal(t) + ' × 光速 30 万公里/秒 ≈ <b>' + fmtDist(err) + '</b>';
+
+    const v = verdictOf(err);
+    pErrSub.textContent = v[1].replace(/^[✅⚠️😱]\s*/, '').replace(/[！。]$/, '');
+    verdict.className = 'verdict ' + v[0];
+    verdict.textContent = v[1];
+    curVerdict = v[0];
+    zoomTip.textContent = '当前误差圈：约 ' + fmtDist(err);
+
+    const r = rOf(err);
+    const col = err < 1 ? '#27ae60' : err < 1000 ? '#f0a020' : err < 1e5 ? '#e67e22' : '#e74c3c';
+
+    const main = document.getElementById('mainRing');
+    if (main){
+      main.style.width = main.style.height = (r * 2) + 'px';
+      main.style.borderColor = col;
+      main.style.background = col + '18';
+      main.style.boxShadow = '0 0 22px ' + col + '55';
+    }
+
+    const a = (ANGLE + Math.sin(wob) * 3) * Math.PI / 180;
+    const dx = Math.cos(a) * r, dy = Math.sin(a) * r;
+    pin.style.transform = 'translate(-50%,-50%) translate(' + dx + 'px,' + dy + 'px)';
+    pinTag.textContent = fmtDist(err);
+    pinTag.style.background = col;
+    pinTag.style.left = dx < 0 ? 'auto' : '105%';
+    pinTag.style.right = dx < 0 ? '105%' : 'auto';
+    trail.style.width = r + 'px';
+    trail.style.transform = 'rotate(' + a + 'rad)';
+    trail.style.background = 'repeating-linear-gradient(90deg,' + col + 'aa 0 8px,transparent 8px 15px)';
+
+    const frac = Math.min(Math.max(Math.log10(err) / Math.log10(3.84e8), 0), 1);
+    rocket.style.left = (9 + frac * 82) + '%';
+
+    curErr = err; curLevel = levelOf(err);
+
+    presets.forEach(b => b.classList.toggle('active',
+      Math.abs(parseFloat(b.dataset.exp) - parseFloat(slider.value)) < 0.03));
+  }
+
+  /* ================= 音效引擎：误差越大，声音越响、越急 ================= */
+  const LOG_A = Math.log10(0.3), LOG_B = Math.log10(3e8);
+  let actx = null, master = null, audioOn = false;
+  let lastTick = 0, lastBeep = 0, lastDeep = 0, alt = 0;
+
+  function levelOf(m){        // 0（很准）→ 1（跑偏到月球）
+    const t = (Math.log10(Math.max(m, 0.01)) - LOG_A) / (LOG_B - LOG_A);
+    return Math.min(Math.max(t, 0), 1);
+  }
+  function ensureAudio(){
+    if (actx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    actx = new AC();
+    master = actx.createGain();
+    master.gain.value = 0.9;
+    master.connect(actx.destination);
+  }
+  function blip(freq, dur, vol, type){       // 合成一个短音
+    const t = actx.currentTime;
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+
+  setInterval(function(){
+    const L = curLevel, now = performance.now();
+
+    // 音量/强度条（无论是否开启音效都显示，作为“危险度”指示）
+    volBar.style.width = (4 + L * 96).toFixed(0) + '%';
+    volBar.style.background = L < 0.4 ? '#27ae60' : L < 0.72 ? '#f0a020' : '#e74c3c';
+    stage.classList.toggle('shake', audioOn && L > 0.85);
+
+    if (!audioOn || !actx) return;
+    master.gain.setTargetAtTime(0.35 + L * 0.65, actx.currentTime, 0.12);   // 总音量随误差升高
+
+    // ⓪ 刚刚“掉进危险区”：来一串升级警报
+    if (curVerdict === 'v-bad' && seenVerdict !== 'v-bad'){
+      [0, 150, 300].forEach((d, i) => setTimeout(function(){
+        if (audioOn && actx) blip(700 + i * 260, 0.16, 0.24, 'triangle');
+      }, d));
+    }
+    seenVerdict = curVerdict;
+
+    // ① 钟表滴答：越不准，滴答越快、音调越低、越响
+    const tickGap = 900 - L * 760;                                          // 900ms → 140ms
+    if (now - lastTick > tickGap){
+      lastTick = now;
+      blip(1250 - L * 520, 0.05, 0.12 + L * 0.10, 'square');
+    }
+    // ② 警示双音：误差超过 300 米后加入，越来越急
+    if (curErr > 300){
+      const gap = 640 - L * 440;                                            // 640ms → 200ms
+      if (now - lastBeep > gap){
+        lastBeep = now; alt = 1 - alt;
+        blip(alt ? 900 : 660, 0.16, 0.20, 'triangle');
+        blip(alt ? 1800 : 1320, 0.09, 0.06, 'sine');
+      }
+    }
+    // ③ 低频轰鸣：误差超过 100 公里后的“危险”音
+    if (curErr > 1e5 && now - lastDeep > 300){
+      lastDeep = now;
+      blip(150, 0.24, 0.22, 'sawtooth');
+    }
+  }, 55);
+
+  soundBtn.addEventListener('click', function(){
+    ensureAudio();
+    if (actx.state === 'suspended') actx.resume();
+    audioOn = !audioOn;
+    soundBtn.classList.toggle('on', audioOn);
+    soundBtn.textContent = audioOn ? '🔊 音效开启' : '🔇 音效已关';
+    soundTip.textContent = audioOn ? '误差越大，声音越响越急' : '点一下开启提示音';
+    seenVerdict = curVerdict;
+    if (!audioOn) stage.classList.remove('shake');
+  });
+  document.addEventListener('visibilitychange', function(){
+    if (!actx) return;
+    if (document.hidden) actx.suspend();
+    else if (audioOn) actx.resume();
+  });
+
+  slider.addEventListener('input', render);
+  presets.forEach(b => b.addEventListener('click', () => { slider.value = b.dataset.exp; render(); }));
+  window.addEventListener('resize', layout);
+  setInterval(() => { wob += 0.45; render(); }, 450);
+  layout();
+})();
+</script>
+</body>
+</html>
