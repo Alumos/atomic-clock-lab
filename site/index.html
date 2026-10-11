@@ -13,34 +13,34 @@
     <div class="header-actions"><button id="help-button">原理说明</button><button id="motion-button" aria-pressed="true">动画开</button><button id="sound-button" aria-pressed="true">音效开</button><button id="fullscreen-button">全屏</button></div>
   </header>
   <section class="cause-chain" aria-label="时间误差影响定位的过程">
-    <div class="metric"><span class="step">01</span><div><p id="time-label">1 号卫星时间偏差</p><strong><span id="time-value">100</span><small id="time-unit">纳秒</small></strong><span class="metric-note" id="time-detail">0.000000100 秒</span></div><span class="chain-arrow" aria-hidden="true">→</span></div>
-    <div class="metric metric-range"><span class="step">02</span><div><p id="range-label">这颗卫星的测距误差</p><strong><span id="range-value">29.98</span><small> 米</small></strong><span class="metric-note" id="range-detail">钟差 × 光速</span></div><span class="chain-arrow" aria-hidden="true">→</span></div>
-    <div class="metric metric-position"><span class="step">03</span><div><p>四星解算后的定位偏差</p><strong><span id="position-value">16.02</span><small> 米</small></strong><span class="metric-note" id="position-detail">本例卫星分布下的模拟结果</span></div></div>
+    <div class="metric"><span class="step">01</span><div><p id="time-label">1 号卫星时间偏差</p><strong><span id="time-value">0</span><small id="time-unit">纳秒</small></strong><span class="metric-note" id="time-detail">0.000000000 秒</span></div><span class="chain-arrow" aria-hidden="true">→</span></div>
+    <div class="metric metric-range"><span class="step">02</span><div><p id="range-label">这颗卫星的测距误差</p><strong><span id="range-value">0.00</span><small> 米</small></strong><span class="metric-note" id="range-detail">钟差 × 光速</span></div><span class="chain-arrow" aria-hidden="true">→</span></div>
+    <div class="metric metric-position"><span class="step">03</span><div><p>四星解算后的定位偏差</p><strong><span id="position-value">0.00</span><small> 米</small></strong><span class="metric-note" id="position-detail">本例卫星分布下的模拟结果</span></div></div>
   </section>
   <div class="workspace">
-    <section class="map-panel" aria-labelledby="map-title">
-      <div class="panel-heading"><h2 id="map-title"><span class="status-dot"></span>人没有动，导航点却偏了</h2><span class="tag">校园定位 · 教学模拟</span></div>
+    <section class="map-panel calibrated" aria-labelledby="map-title">
+      <div class="panel-heading"><h2 id="map-title"><span class="status-dot"></span>原子钟同步，模拟偏差归零</h2><span class="tag">校园定位 · 教学模拟</span></div>
       <div class="map-wrap"><canvas id="map" width="1000" height="580" aria-label="校园地图：绿色是真实位置，橙色是导航估计位置。调节卫星钟差观察变化。"></canvas></div>
       <div class="map-caption"><div class="legend"><span><i class="actual-dot"></i>真实位置</span><span><i class="estimate-dot"></i>导航估计位置</span><span class="grid-caption">每格 50 米</span></div><button id="zoom-button" aria-pressed="false">放大看微小偏差</button></div>
-      <div class="observation" id="observation" role="status" aria-live="polite"><span class="observation-icon" aria-hidden="true">↗</span><div><strong id="observation-title">时间偏了，导航位置也偏了</strong><p id="observation-text">调大钟差，观察橙色导航点。</p></div></div>
+      <div class="observation" id="observation" role="status" aria-live="polite"><span class="observation-icon" aria-hidden="true">↗</span><div><strong id="observation-title">四颗卫星时间同步，定位准确</strong><p id="observation-text">当前四颗卫星的时间偏差均为零。选择一个时间偏差，观察定位怎样变化。现实定位还有其他误差。</p></div></div>
     </section>
     <aside class="control-panel" aria-labelledby="control-title">
       <div class="control-heading"><h2 id="control-title">选择一种钟差，动手比较</h2></div>
       <div class="modes" role="group" aria-label="卫星钟差实验模式"><button data-mode="single" aria-pressed="true" class="active">单星偏差</button><button data-mode="mixed" aria-pressed="false">四星不同偏差</button></div>
       <p id="mode-note" class="mode-note">只改变 1 号卫星，其他三颗保持同步。</p>
       <div class="satellites" role="group" aria-label="选择要调整的卫星">
-        <button data-satellite="0" aria-pressed="true"><span>1 号卫星</span><strong id="sat-value-0">快 100 ns</strong></button>
+        <button data-satellite="0" aria-pressed="true"><span>1 号卫星</span><strong id="sat-value-0">同步</strong></button>
         <button data-satellite="1" aria-pressed="false"><span>2 号卫星</span><strong id="sat-value-1">同步</strong></button>
         <button data-satellite="2" aria-pressed="false"><span>3 号卫星</span><strong id="sat-value-2">同步</strong></button>
         <button data-satellite="3" aria-pressed="false"><span>4 号卫星</span><strong id="sat-value-3">同步</strong></button>
       </div>
       <div class="clock-control">
-        <label class="slider-label" for="clock-slider"><span id="slider-target">1 号卫星钟差</span><strong><span id="slider-value">100</span><small> ns</small></strong></label>
-        <input id="clock-slider" type="range" min="0" max="1000000000" step="1" value="100" aria-describedby="unit-note">
+        <label class="slider-label" for="clock-slider"><span id="slider-target">1 号卫星钟差</span><strong><span id="slider-value">0</span><small> ns</small></strong></label>
+        <input id="clock-slider" type="range" min="0" max="1000000000" step="1" value="0" aria-describedby="unit-note">
         <div class="slider-ticks"><span>0 · 同步</span><span id="unit-note">光速让微小时间差变成长距离</span><span>1 秒</span></div>
       </div>
       <div class="presets" role="group" aria-label="快速选择时间偏差"><button data-ns="1" aria-pressed="false">十亿分之一秒<small>1 ns</small></button><button data-ns="10" aria-pressed="false">亿分之一秒<small>10 ns</small></button><button data-ns="1000" aria-pressed="false">百万分之一秒<small>1 μs</small></button><button data-ns="1000000" aria-pressed="false">千分之一秒<small>1 ms</small></button><button data-ns="100000000" aria-pressed="false">十分之一秒<small>0.1 s</small></button><button data-ns="1000000000" aria-pressed="false">差一整秒<small>1 s</small></button></div>
-      <div class="direction" role="group" aria-label="钟差方向"><span id="clock-status">比参考时间快 100 纳秒</span><button data-direction="ahead" class="active" aria-pressed="true">走快了</button><button data-direction="behind" aria-pressed="false">走慢了</button></div>
+      <div class="direction" role="group" aria-label="钟差方向"><span id="clock-status">与参考时间同步</span><button data-direction="ahead" class="active" aria-pressed="true">走快了</button><button data-direction="behind" aria-pressed="false">走慢了</button></div>
       <div class="experiment-actions"><button class="primary-button" id="calibrate-button">↺ 校准全部原子钟</button><button class="demo-button" id="demo-button" aria-pressed="false">▶ 混乱演示：偏差扩大 → 校准</button></div>
       <div class="takeaway" id="experiment-tip">跨度从十亿分之一秒一直到整整 1 秒，感受定位如何失控。</div>
     </aside>

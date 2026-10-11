@@ -4,7 +4,7 @@
   function $(id){return document.getElementById(id);}
   function each(selector,fn){Array.prototype.forEach.call(document.querySelectorAll(selector),fn);}
   var canvas=$('map'),ctx=canvas.getContext('2d'),satellite=null;
-  var state={clocks:[1000000,0,0,0],selected:0,mode:'single',direction:'ahead',zoom:false,sound:true,motion:!window.matchMedia('(prefers-reduced-motion: reduce)').matches};
+  var state={clocks:[0,0,0,0],selected:0,mode:'single',direction:'ahead',zoom:false,sound:true,motion:!window.matchMedia('(prefers-reduced-motion: reduce)').matches};
   var width=1000,height=580,time=0,last=0,dirty=true,demoStart=null,calibration=null,audio=null,lastTone=0,lastAlarm=0;
   var PRESETS=[1,10,1000,1000000,100000000,1000000000];
   function clockParts(ns){
@@ -37,7 +37,7 @@
   function signed(n){return (n>0?'+':'')+(Math.abs(n)<.005?'0':n.toFixed(1));}
   function observation(r){
     var title,description,p=fmt(r.positionError),parts;
-    if(r.ns===0){title='校准完成，四颗卫星恢复同步';description='本实验设置的钟差已清除，模拟定位偏差归零。现实定位还有其他误差。';}
+    if(r.ns===0){title='四颗卫星时间同步，定位准确';description='当前四颗卫星的时间偏差均为零。选择一个时间偏差，观察定位怎样变化。现实定位还有其他误差。';}
     else if(state.mode==='mixed'){title=r.ns>=100000000?'定位已经失控：四颗卫星互相“吵架”':'四颗卫星的钟差一起影响定位';description='当前定位点偏离 '+p+' 米。不同误差会叠加或部分抵消；选择任一卫星，单独改变它的钟差。';}
     else if(r.ns<=10){title='这么小的时间差，也能改变测距';description='本例定位偏差 '+p+' 米。打开“放大看微小偏差”，观察两个位置。';}
     else if(r.ns>=1000000){title='警告：时间差已经让定位失控';description='1 号卫星的时间差是 '+clockParts(r.ns).short+'，单颗测距误差约 '+fmt(r.rangeError)+' 米；导航点已远离真实位置。';}
@@ -75,7 +75,7 @@
   $('clock-slider').addEventListener('input',function(){setNs(this.value,true);});$('clock-slider').addEventListener('change',function(){setNs(this.value,true);});
   each('[data-ns]',function(b){b.addEventListener('click',function(){setNs(b.dataset.ns,true);});});
   each('[data-direction]',function(b){b.addEventListener('click',function(){manual();state.direction=b.dataset.direction;setNs(Math.abs(state.clocks[state.selected]),false);soundTone([440],.12);});});
-  each('[data-mode]',function(b){b.addEventListener('click',function(){manual();state.mode=b.dataset.mode;state.selected=0;state.direction='ahead';state.clocks=state.mode==='single'?[1000000,0,0,0]:[1000000,-700000,400000,-900000];stopDemo();render();soundTone([440],.12);});});
+  each('[data-mode]',function(b){b.addEventListener('click',function(){manual();state.mode=b.dataset.mode;state.selected=0;state.direction='ahead';state.clocks=[0,0,0,0];stopDemo();render();soundTone([440],.12);});});
   each('[data-satellite]',function(b){b.addEventListener('click',function(){if(state.mode!=='mixed')return;manual();state.selected=Number(b.dataset.satellite);render();soundTone([440],.12);});});
   $('calibrate-button').addEventListener('click',function(){manual();if(state.motion&&M.constellation(state.clocks).ns>0)calibration={from:state.clocks.slice(),start:performance.now()};else{state.clocks=[0,0,0,0];render();soundTone([523,784],.18);}});
   $('zoom-button').addEventListener('click',function(){state.zoom=!state.zoom;this.setAttribute('aria-pressed',String(state.zoom));this.textContent=state.zoom?'收起局部放大':'放大看微小偏差';dirty=true;});
